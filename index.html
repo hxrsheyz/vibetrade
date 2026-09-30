@@ -1,660 +1,874 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VibeTrade – AI-Built Intraday Trading Copilot</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <!-- Babel compiler for inline JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- FontAwesome / Lucide Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            darkbg: '#0f172a',
-            panelbg: '#1e293b',
-            bordercol: '#334155',
-            accentgreen: '#10b981',
-            accentred: '#ef4444',
-            accentyellow: '#f59e0b',
-            accentblue: '#3b82f6'
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    body { background-color: #0b0f19; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
-    .custom-scroll::-webkit-scrollbar { width: 6px; }
-    .custom-scroll::-webkit-scrollbar-track { background: #1e293b; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VibeTrade: intraday risk copilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF0F3;
+    --panel: #FFFFFF;
+    --ink: #16202A;
+    --muted: #5B6773;
+    --line: #D3DAE1;
+    --line-soft: #E6EBF0;
+    --accent: #23415F;
+    --focus: #2F4B6E;
+    --pass: #0E7466;
+    --pass-bg: #E1F2EF;
+    --warn: #A85A00;
+    --warn-bg: #FBEBD3;
+    --fail: #B3261E;
+    --fail-bg: #FBE4E1;
+    --idle: #6B7682;
+    --idle-bg: #EEF1F4;
+    --head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.5 var(--body);
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 18px 20px 48px; }
+
+  /* header */
+  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  h1 { font: 700 30px/1.1 var(--head); letter-spacing: -0.02em; margin: 0; }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; max-width: 60ch; }
+  .sim-note { border: 1px solid var(--warn); background: var(--warn-bg); color: #6B3A00; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+
+  /* controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .field { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  select, input[type="number"], input[type="url"], input[type="text"] {
+    font: inherit; font-size: 14px; color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-height: 36px;
+  }
+  .btn {
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 13px; min-height: 36px; cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.small { min-height: 30px; padding: 4px 10px; font-size: 12.5px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  :is(.btn, select, input, a):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .scrub { display: flex; flex-direction: column; gap: 3px; flex: 1 1 220px; min-width: 200px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .scrub input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+  /* pipeline: the centrepiece */
+  .pipeline-wrap { margin-top: 14px; }
+  .pipeline-wrap h2 { font: 700 17px/1.2 var(--head); margin: 0 0 8px; }
+  .pipeline {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .stage { padding: 11px 12px 13px; border-top: 5px solid var(--idle); border-right: 1px solid var(--line-soft); min-width: 0; }
+  .stage:last-child { border-right: 0; }
+  .stage[data-s="pass"] { border-top-color: var(--pass); }
+  .stage[data-s="warn"] { border-top-color: var(--warn); background: #FFFBF3; }
+  .stage[data-s="fail"] { border-top-color: var(--fail); background: #FFF7F6; }
+  .stage h3 { font: 600 13px/1.2 var(--body); color: var(--muted); margin: 0 0 3px; }
+  .stage .st { font: 700 15px/1.25 var(--head); margin: 0 0 4px; }
+  .stage[data-s="pass"] .st { color: var(--pass); }
+  .stage[data-s="warn"] .st { color: var(--warn); }
+  .stage[data-s="fail"] .st { color: var(--fail); }
+  .stage[data-s="idle"] .st { color: var(--idle); }
+  .stage p { margin: 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+
+  /* layout */
+  .main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 14px; margin-top: 14px; }
+  .row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+  .panel h2 { font: 700 17px/1.2 var(--head); margin: 0 0 10px; }
+  .panel h3 { font: 700 13.5px/1.3 var(--body); margin: 12px 0 4px; }
+  .head-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .head-row h2 { margin: 0; }
+
+  /* metrics */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 10px; }
+  .metric { border: 1px solid var(--line-soft); border-radius: 8px; padding: 7px 10px; background: #FAFBFC; }
+  .metric span { display: block; font-size: 12px; color: var(--muted); }
+  .metric strong { font: 700 17px/1.25 var(--head); }
+  .metric strong.up { color: var(--pass); }
+  .metric strong.down { color: var(--fail); }
+
+  /* chart */
+  .chart { width: 100%; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+
+  /* decision */
+  .verdict { padding: 10px 12px; border-radius: 8px; border: 1px solid; }
+  .verdict strong { display: block; font: 700 21px/1.2 var(--head); }
+  .verdict span { font-size: 13px; }
+  .verdict[data-s="pass"] { background: var(--pass-bg); border-color: var(--pass); color: #0A5147; }
+  .verdict[data-s="fail"] { background: var(--fail-bg); border-color: var(--fail); color: #86190F; }
+  .verdict[data-s="idle"] { background: var(--idle-bg); border-color: var(--line); color: #33404C; }
+  .thesis { margin: 10px 0 0; }
+  ul.plain { margin: 0; padding-left: 18px; font-size: 13.5px; }
+  ul.plain li { margin: 2px 0; }
+  .news { border-left: 4px solid var(--line); padding: 4px 0 4px 10px; font-size: 13.5px; }
+  .news small { display: block; color: var(--muted); }
+  .approval { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 9px 11px; font-size: 13.5px; }
+  .approval .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .approval.done { border-color: var(--line); background: var(--idle-bg); }
+  .explain { font-size: 13.5px; background: #FAFBFC; border: 1px solid var(--line-soft); border-radius: 8px; padding: 9px 11px; }
+
+  /* tables and badges */
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .num { text-align: right; }
+  .badge { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .badge.pass { color: var(--pass); background: var(--pass-bg); border-color: var(--pass); }
+  .badge.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn); }
+  .badge.fail { color: var(--fail); background: var(--fail-bg); border-color: var(--fail); }
+  .badge.idle { color: var(--idle); background: var(--idle-bg); border-color: var(--line); }
+
+  /* ticket + portfolio */
+  .kv { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
+  .kv span:first-child { color: var(--muted); }
+  .kv strong { font-weight: 600; }
+  .ticket-form { display: grid; gap: 10px; margin-bottom: 8px; }
+  .msg { font-size: 13px; color: var(--muted); margin: 8px 0 0; min-height: 20px; }
+  .result { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13.5px; background: #FAFBFC; }
+  .result[data-s="pass"] { border-color: var(--pass); background: var(--pass-bg); }
+  .result[data-s="warn"] { border-color: var(--warn); background: var(--warn-bg); }
+  .result[data-s="fail"] { border-color: var(--fail); background: var(--fail-bg); }
+  .empty { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
+
+  /* footer */
+  .foot { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+  .foot p { margin: 0; color: var(--muted); font-size: 13px; max-width: 62ch; }
+  .backend { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .backend input { min-width: 260px; }
+  #backendMsg { flex-basis: 100%; font-size: 13px; color: var(--muted); margin: 0; }
+
+  @media (max-width: 960px) {
+    .main { grid-template-columns: 1fr; }
+    .row3 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 14px 12px 36px; }
+    h1 { font-size: 26px; }
+    .stage { border-right: 0; border-bottom: 1px solid var(--line-soft); }
+    .backend input { min-width: 0; width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+</style>
 </head>
 <body>
-  <div id="root"></div>
+<div class="wrap">
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+  <header class="top">
+    <div>
+      <h1>VibeTrade</h1>
+      <p class="sub">Intraday trading intelligence and risk copilot. Replay a synthetic market and see every agent's decision before any order is simulated.</p>
+    </div>
+    <div class="sim-note" role="note">Simulation only. No live orders and no broker connection.</div>
+  </header>
 
-    // Backend URL selector (default to Railway deployed backend, with fallback to localhost)
-    const DEFAULT_API_URL = "https://vibetrade-backend-production.up.railway.app/api";
-    const LOCAL_API_URL = "http://localhost:5000/api";
+  <section class="controls" aria-label="Replay controls">
+    <label class="field">Instrument
+      <select id="asset"></select>
+    </label>
+    <label class="field">Volatility stress
+      <select id="mult">
+        <option value="0.8">0.8x calmer</option>
+        <option value="1" selected>1x normal</option>
+        <option value="1.5">1.5x stressed</option>
+        <option value="2.5">2.5x extreme</option>
+      </select>
+    </label>
+    <button class="btn" id="prev" type="button">Previous bar</button>
+    <button class="btn primary" id="next" type="button">Next bar</button>
+    <button class="btn" id="play" type="button" aria-pressed="false">Auto-play</button>
+    <button class="btn" id="resetReplay" type="button">Restart replay</button>
+    <label class="scrub"><span id="tickLabel">Bar</span>
+      <input id="slider" type="range" min="20" max="149" value="65">
+    </label>
+  </section>
 
-    function App() {
-      const [baseUrl, setBaseUrl] = useState(DEFAULT_API_URL);
-      const [backendOnline, setBackendOnline] = useState(false);
-      const [candles, setCandles] = useState([]);
-      const [currentStepData, setCurrentStepData] = useState(null);
-      const [replayState, setReplayState] = useState({ current_index: 0, total_candles: 30, is_complete: false });
-      const [auditLogs, setAuditLogs] = useState([]);
-      const [viewRawJson, setViewRawJson] = useState(false);
-      const [loading, setLoading] = useState(false);
-      const [errorMsg, setErrorMsg] = useState(null);
+  <section class="pipeline-wrap" aria-label="Agent pipeline">
+    <h2>What each agent decided at this bar</h2>
+    <div class="pipeline" id="pipeline"></div>
+  </section>
 
-      const chartRef = useRef(null);
-      const chartInstance = useRef(null);
+  <div class="main">
+    <section class="panel" aria-label="Market view">
+      <div class="head-row"><h2 id="chartTitle">Market view</h2></div>
+      <div class="metrics" id="metrics"></div>
+      <div class="chart" id="chart"></div>
+      <div class="legend">
+        <span><i style="border-color:#B86E00; border-top-style:dashed"></i>VWAP</span>
+        <span><i style="border-color:#2F4B6E"></i>20-bar average</span>
+        <span>Amber diamonds mark market events</span>
+        <span>Triangles mark simulated fills</span>
+      </div>
+    </section>
 
-      // Check backend health & load initial candles
-      useEffect(() => {
-        loadData();
-      }, [baseUrl]);
+    <section class="panel" id="decision" aria-label="Decision"></section>
+  </div>
 
-      const loadData = async () => {
-        setLoading(true);
-        setErrorMsg(null);
-        try {
-          // Fetch candles
-          const resCandles = await fetch(`${baseUrl}/candles`);
-          if (!resCandles.ok) throw new Error("Backend unavailable");
-          const dataCandles = await resCandles.json();
-          setCandles(dataCandles.candles || []);
-          setBackendOnline(true);
+  <div class="row3">
+    <section class="panel" aria-label="Risk checks">
+      <h2>Risk checks for this order</h2>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Check</th><th>Now</th><th>Limit</th><th>Result</th></tr></thead>
+          <tbody id="riskBody"></tbody>
+        </table>
+      </div>
+    </section>
 
-          // Fetch replay state
-          const resState = await fetch(`${baseUrl}/replay/state`);
-          const dataState = await resState.json();
-          setReplayState(dataState);
+    <section class="panel" aria-label="Order ticket">
+      <h2>Simulated order</h2>
+      <div class="ticket-form">
+        <label class="field">Quantity (buy)
+          <input id="qty" type="number" min="0" step="any" value="10">
+        </label>
+      </div>
+      <div class="kv"><span>Order value</span><strong id="notional">-</strong></div>
+      <div class="kv"><span>Stop-loss (2% below)</span><strong id="stop">-</strong></div>
+      <div class="kv"><span>Estimated fee (5 bps)</span><strong id="fees">-</strong></div>
+      <div class="kv"><span>Slippage range</span><strong>1 to 4 bps</strong></div>
+      <p class="msg" id="execMsg"></p>
+      <button class="btn primary" id="execute" type="button" style="width:100%">Simulate order</button>
+      <div class="result" id="execResult" hidden></div>
+    </section>
 
-          // Get first step
-          const resNext = await fetch(`${baseUrl}/replay/next`, { method: "POST" });
-          const dataNext = await resNext.json();
-          setCurrentStepData(dataNext);
+    <section class="panel" aria-label="Portfolio">
+      <div class="head-row">
+        <h2>Portfolio</h2>
+        <button class="btn small" id="resetPortfolio" type="button">Reset cash</button>
+      </div>
+      <div id="portfolio"></div>
+    </section>
+  </div>
 
-          // Fetch logs
-          const resLogs = await fetch(`${baseUrl}/audit/logs`);
-          const dataLogs = await resLogs.json();
-          setAuditLogs(dataLogs.logs || []);
-        } catch (err) {
-          console.warn("Failed to connect to primary backend URL:", baseUrl);
-          setBackendOnline(false);
-          // Auto fallback attempt to localhost if Railway fails
-          if (baseUrl === DEFAULT_API_URL) {
-            setBaseUrl(LOCAL_API_URL);
-          } else {
-            setErrorMsg("Could not connect to backend server. Make sure Railway or local server is running.");
-          }
-        } finally {
-          setLoading(false);
-        }
-      };
+  <section class="panel" style="margin-top:14px" aria-label="Audit log">
+    <div class="head-row">
+      <h2>Audit log</h2>
+      <button class="btn small" id="exportAudit" type="button">Download log as JSON</button>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Time</th><th>Stage</th><th>Event</th><th>Result</th><th>Details</th></tr></thead>
+        <tbody id="auditBody"></tbody>
+      </table>
+    </div>
+  </section>
 
-      // Replay actions
-      const handleNextStep = async () => {
-        setLoading(true);
-        try {
-          const res = await fetch(`${baseUrl}/replay/next`, { method: "POST" });
-          const data = await res.json();
-          setCurrentStepData(data);
-          setReplayState(data.replay_state);
+  <footer class="foot">
+    <p>Prices, news and fills are synthetic. Signals are rule-based and shown with their evidence. Nothing here is financial advice.</p>
+    <div class="backend">
+      <label class="field">Backend API address (optional)
+        <input id="backendUrl" type="url" placeholder="https://your-backend-url">
+      </label>
+      <button class="btn" id="checkBackend" type="button">Check backend</button>
+      <p id="backendMsg" role="status"></p>
+    </div>
+  </footer>
+</div>
 
-          const resLogs = await fetch(`${baseUrl}/audit/logs`);
-          const dataLogs = await resLogs.json();
-          setAuditLogs(dataLogs.logs || []);
-        } catch (err) {
-          setErrorMsg("Step execution failed.");
-        } finally {
-          setLoading(false);
-        }
-      };
+<script>
+(function () {
+  "use strict";
 
-      const handleReset = async () => {
-        setLoading(true);
-        try {
-          await fetch(`${baseUrl}/replay/reset`, { method: "POST" });
-          const resNext = await fetch(`${baseUrl}/replay/next`, { method: "POST" });
-          const dataNext = await resNext.json();
-          setCurrentStepData(dataNext);
-          setReplayState(dataNext.replay_state);
+  /* Optional: paste your deployed backend address here, or type it in the footer box. */
+  var BACKEND_URL = "";
 
-          const resLogs = await fetch(`${baseUrl}/audit/logs`);
-          const dataLogs = await resLogs.json();
-          setAuditLogs(dataLogs.logs || []);
-        } catch (err) {
-          setErrorMsg("Reset failed.");
-        } finally {
-          setLoading(false);
-        }
-      };
+  var N = 150, START = 9 * 60 + 15, BAR = 3, VIEW = 80;
+  var START_CASH = 100000, FEE = 0.0005, STOP = 0.02;
+  var EVENTS = { 40: "Normal trend", 65: "Breakout spike", 90: "Volatility spike", 115: "Volume anomaly" };
+  var ASSETS = {
+    "AAPL":    { name: "Apple",    base: 220,   vol: 0.006, drift: 0.0002 },
+    "NVDA":    { name: "NVIDIA",   base: 125,   vol: 0.009, drift: 0.0004 },
+    "BTC/USD": { name: "Bitcoin",  base: 64000, vol: 0.010, drift: 0.0003 },
+    "ETH/USD": { name: "Ethereum", base: 3450,  vol: 0.012, drift: 0.0002 },
+    "TSLA":    { name: "Tesla",    base: 240,   vol: 0.018, drift: -0.0001 }
+  };
+  var C = { up: "#0E7466", down: "#B3261E", grid: "#E6EBF0", muted: "#5B6773", vwap: "#B86E00", sma: "#2F4B6E", event: "#B86E00", ink: "#16202A" };
 
-      const handleJump = async (index) => {
-        setLoading(true);
-        try {
-          await fetch(`${baseUrl}/replay/jump`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ index })
-          });
-          const resNext = await fetch(`${baseUrl}/replay/next`, { method: "POST" });
-          const dataNext = await resNext.json();
-          setCurrentStepData(dataNext);
-          setReplayState(dataNext.replay_state);
+  var $ = function (id) { return document.getElementById(id); };
 
-          const resLogs = await fetch(`${baseUrl}/audit/logs`);
-          const dataLogs = await resLogs.json();
-          setAuditLogs(dataLogs.logs || []);
-        } catch (err) {
-          setErrorMsg(`Jump to candle ${index} failed.`);
-        } finally {
-          setLoading(false);
-        }
-      };
+  /* ---------- formatting ---------- */
+  function num(n, d) { d = d === undefined ? 2 : d; return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function usd(n) { return (n < 0 ? "-" : "") + "$" + num(Math.abs(n)); }
+  function pct(n, d) { return num(n * 100, d === undefined ? 1 : d) + "%"; }
+  function spct(n) { return (n >= 0 ? "+" : "") + pct(n); }
+  function price(p) { return num(p, 2); }
+  function timeLabel(m) { return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
+  function clock() { return new Date().toTimeString().slice(0, 8); }
 
-      // Render chart whenever current step changes
-      useEffect(() => {
-        if (!chartRef.current || candles.length === 0 || !currentStepData) return;
+  /* ---------- synthetic market data (seeded, so the demo is repeatable) ---------- */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function gauss(r) {
+    var u = 0, v = 0;
+    while (!u) u = r();
+    while (!v) v = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function avg(arr) { var s = 0; for (var i = 0; i < arr.length; i++) s += arr[i]; return arr.length ? s / arr.length : 0; }
 
-        const currentIdx = currentStepData.candle.index;
-        const visibleCandles = candles.slice(0, currentIdx + 1);
-        const labels = visibleCandles.map(c => `T${c.index}`);
-        const prices = visibleCandles.map(c => c.close);
-        const vwaps = visibleCandles.map(c => c.vwap);
+  function generate(sym) {
+    var cfg = ASSETS[sym];
+    var seed = 42;
+    for (var c = 0; c < sym.length; c++) seed += sym.charCodeAt(c) * 31;
+    var r = mulberry32(seed);
+    var bars = [], p = cfg.base, i;
 
-        if (chartInstance.current) {
-          chartInstance.current.destroy();
-        }
-
-        const ctx = chartRef.current.getContext('2d');
-        chartInstance.current = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              {
-                label: 'Price ($)',
-                data: prices,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 2,
-                tension: 0.2,
-                fill: true
-              },
-              {
-                label: 'VWAP ($)',
-                data: vwaps,
-                borderColor: '#3b82f6',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                tension: 0.2,
-                fill: false
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { labels: { color: '#94a3b8' } }
-            },
-            scales: {
-              x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-              y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-            }
-          }
-        });
-      }, [currentStepData, candles]);
-
-      const candle = currentStepData?.candle;
-      const signal = currentStepData?.signal;
-      const risk = currentStepData?.risk;
-      const trade = currentStepData?.trade;
-
-      return (
-        <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 md:p-6 flex flex-col gap-6">
-          
-          {/* HEADER BAR */}
-          <header className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-lg backdrop-blur">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xl border border-emerald-500/30">
-                  <i className="fa-solid fa-chart-line"></i>
-                </div>
-                <div>
-                  <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
-                    VibeTrade <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">AI Intraday Copilot</span>
-                  </h1>
-                  <p className="text-xs md:text-sm text-slate-400">
-                    Paper-trading demo. Deterministic Risk Gate. Synthetic data only.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Server Status Indicator */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs">
-                <span className={`w-2.5 h-2.5 rounded-full ${backendOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
-                <span className="text-slate-300">Backend:</span>
-                <span className="font-semibold text-slate-200">{backendOnline ? 'Connected' : 'Offline'}</span>
-              </div>
-
-              {/* Simulation Safety Badge */}
-              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
-                <i className="fa-solid fa-shield-halved"></i>
-                SIMULATION ONLY – NO LIVE ORDERS
-              </div>
-
-              {/* Server Target Toggle */}
-              <button 
-                onClick={() => setBaseUrl(baseUrl === DEFAULT_API_URL ? LOCAL_API_URL : DEFAULT_API_URL)}
-                className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg transition border border-slate-600"
-                title="Switch API Server URL"
-              >
-                {baseUrl === DEFAULT_API_URL ? '🌐 Railway API' : '💻 Localhost API'}
-              </button>
-            </div>
-          </header>
-
-          {/* MAIN GRID */}
-          <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* LEFT COLUMN: Market Snapshot & Replay Controls (4 cols) */}
-            <section className="lg:col-span-4 flex flex-col gap-6">
-              
-              {/* Market Snapshot Panel */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-4 shadow-md">
-                <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <h2 className="font-bold text-slate-200 flex items-center gap-2">
-                    <i className="fa-solid fa-gauge-high text-emerald-400"></i> Market Snapshot
-                  </h2>
-                  <span className="text-xs bg-slate-700 text-slate-300 font-mono px-2.5 py-1 rounded">
-                    Symbol: DEMO
-                  </span>
-                </div>
-
-                {/* Main Metrics Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-                    <span className="text-xs text-slate-400 block">Close Price</span>
-                    <span className="text-xl font-bold text-emerald-400 font-mono">
-                      ${candle ? candle.close.toFixed(2) : '--'}
-                    </span>
-                  </div>
-                  <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-                    <span className="text-xs text-slate-400 block">VWAP Indicator</span>
-                    <span className="text-xl font-bold text-blue-400 font-mono">
-                      ${candle ? candle.vwap.toFixed(2) : '--'}
-                    </span>
-                  </div>
-                  <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-                    <span className="text-xs text-slate-400 block">Volume Ratio</span>
-                    <span className={`text-lg font-bold font-mono ${candle?.volume_ratio > 1.8 ? 'text-amber-400' : 'text-slate-200'}`}>
-                      {candle ? `${candle.volume_ratio.toFixed(2)}x` : '--'}
-                    </span>
-                  </div>
-                  <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-                    <span className="text-xs text-slate-400 block">Rolling Volatility</span>
-                    <span className={`text-lg font-bold font-mono ${candle?.volatility > 0.05 ? 'text-rose-400' : 'text-slate-200'}`}>
-                      {candle ? `${(candle.volatility * 100).toFixed(2)}%` : '--'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Scenario Hint Note */}
-                {candle?.note && (
-                  <div className="bg-blue-950/40 border border-blue-800/40 text-blue-300 p-2.5 rounded-lg text-xs flex items-start gap-2">
-                    <i className="fa-solid fa-circle-info mt-0.5 text-blue-400"></i>
-                    <div>
-                      <span className="font-semibold block">Scenario Marker:</span>
-                      {candle.note}
-                    </div>
-                  </div>
-                )}
-
-                {/* Interactive Chart Canvas */}
-                <div className="h-44 w-full bg-slate-900/90 rounded-lg p-2 border border-slate-700/60 relative">
-                  <canvas ref={chartRef}></canvas>
-                </div>
-              </div>
-
-              {/* Replay Controls Panel */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-4 shadow-md">
-                <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <h2 className="font-bold text-slate-200 flex items-center gap-2">
-                    <i className="fa-solid fa-play text-blue-400"></i> Replay Controls
-                  </h2>
-                  <span className="text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded">
-                    Candle {replayState.current_index} / 30
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-2.5">
-                  <button
-                    onClick={handleNextStep}
-                    disabled={loading || replayState.is_complete}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-2 shadow"
-                  >
-                    <i className="fa-solid fa-forward-step"></i>
-                    {loading ? 'Processing...' : 'Replay Next Event'}
-                  </button>
-
-                  <button
-                    onClick={handleReset}
-                    disabled={loading}
-                    className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 border border-slate-600 text-sm"
-                  >
-                    <i className="fa-solid fa-rotate-left"></i> Reset Replay
-                  </button>
-                </div>
-
-                {/* Judging Rehearsal Shortcut Buttons */}
-                <div className="pt-2 border-t border-slate-700/60 flex flex-col gap-2">
-                  <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Demo Rehearsal Shortcuts:</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleJump(11)}
-                      className="bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/60 text-emerald-300 text-xs p-2 rounded-lg text-left transition"
-                    >
-                      <div className="font-bold">Candle 11: Breakout</div>
-                      <div className="text-[10px] text-emerald-400/80">Trade APPROVED</div>
-                    </button>
-
-                    <button
-                      onClick={() => handleJump(21)}
-                      className="bg-rose-950/60 hover:bg-rose-900/80 border border-rose-700/60 text-rose-300 text-xs p-2 rounded-lg text-left transition"
-                    >
-                      <div className="font-bold">Candle 21: High Vol</div>
-                      <div className="text-[10px] text-rose-400/80">Trade BLOCKED</div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* MIDDLE COLUMN: Signal Agent, Risk Guardian, Trade Simulator (5 cols) */}
-            <section className="lg:col-span-5 flex flex-col gap-6">
-              
-              {/* Signal Agent Panel */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-4 shadow-md">
-                <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-robot text-purple-400 text-lg"></i>
-                    <h2 className="font-bold text-slate-200">AI Signal Agent</h2>
-                  </div>
-                  <button
-                    onClick={() => setViewRawJson(!viewRawJson)}
-                    className="text-xs text-slate-400 hover:text-slate-200 underline"
-                  >
-                    {viewRawJson ? 'View Summary' : 'View JSON'}
-                  </button>
-                </div>
-
-                {signal ? (
-                  viewRawJson ? (
-                    <pre className="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono overflow-x-auto border border-slate-700/60 max-h-48 custom-scroll">
-                      {JSON.stringify(signal, null, 2)}
-                    </pre>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {/* Signal & Confidence Bar */}
-                      <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-                        <div>
-                          <span className="text-xs text-slate-400 block">Proposed Action</span>
-                          <span className={`text-base font-extrabold px-2.5 py-0.5 rounded border inline-block mt-0.5 ${
-                            signal.signal === 'WATCH_LONG' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                            signal.signal === 'EXIT_WATCH' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                            'bg-slate-700 text-slate-300 border-slate-600'
-                          }`}>
-                            {signal.signal}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs text-slate-400 block">Confidence Score</span>
-                          <span className="text-lg font-bold font-mono text-purple-400">
-                            {(signal.confidence * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Reasons */}
-                      <div>
-                        <span className="text-xs font-semibold text-slate-400 block mb-1.5">Agent Thesis & Reasons:</span>
-                        <ul className="space-y-1">
-                          {signal.reasons?.map((reason, idx) => (
-                            <li key={idx} className="text-xs text-slate-300 flex items-start gap-1.5 bg-slate-900/40 p-2 rounded border border-slate-800">
-                              <i className="fa-solid fa-check text-emerald-400 mt-0.5 text-[10px]"></i>
-                              <span>{reason}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Risks */}
-                      {signal.risks?.length > 0 && (
-                        <div>
-                          <span className="text-xs font-semibold text-slate-400 block mb-1.5">Risk Factors Identified:</span>
-                          <ul className="space-y-1">
-                            {signal.risks.map((riskItem, idx) => (
-                              <li key={idx} className="text-xs text-amber-300/90 flex items-start gap-1.5 bg-amber-950/30 p-2 rounded border border-amber-900/30">
-                                <i className="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5 text-[10px]"></i>
-                                <span>{riskItem}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )
-                ) : (
-                  <div className="text-xs text-slate-400 italic">No signal generated yet. Click Replay Next Event.</div>
-                )}
-              </div>
-
-              {/* Risk Guardian Panel (Deterministic Gate) */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-4 shadow-md">
-                <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-shield-cat text-amber-400 text-lg"></i>
-                    <h2 className="font-bold text-slate-200">Risk Guardian Gate</h2>
-                  </div>
-                  <span className="text-[10px] bg-slate-900 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-mono">
-                    Deterministic Zero-LLM Rule Gate
-                  </span>
-                </div>
-
-                {risk ? (
-                  <div className="flex flex-col gap-3">
-                    {/* Decision Banner */}
-                    <div className={`p-3 rounded-lg border text-center font-bold text-sm flex items-center justify-center gap-2 ${
-                      risk.approved 
-                        ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' 
-                        : 'bg-rose-950/60 border-rose-500/50 text-rose-300'
-                    }`}>
-                      <i className={`fa-solid ${risk.approved ? 'fa-circle-check text-emerald-400' : 'fa-ban text-rose-400'}`}></i>
-                      {risk.approved ? 'RISK CHECK PASSED – TRADE APPROVED' : 'TRADE REJECTED BY RISK GUARDIAN'}
-                    </div>
-
-                    {/* Check Indicators Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {Object.entries(risk.checks || {}).map(([key, result]) => (
-                        <div key={key} className={`p-2 rounded border text-xs flex justify-between items-center ${
-                          result === 'passed' ? 'bg-slate-900/60 border-emerald-900/50 text-slate-300' : 'bg-rose-950/40 border-rose-800/60 text-rose-300'
-                        }`}>
-                          <span className="capitalize">{key.replace('_', ' ')}</span>
-                          <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
-                            result === 'passed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                          }`}>
-                            {result}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Rejection Reason Box */}
-                    {risk.rejection_reason && (
-                      <div className="bg-rose-950/50 border border-rose-800/60 text-rose-300 p-2.5 rounded-lg text-xs flex items-start gap-2">
-                        <i className="fa-solid fa-circle-xmark text-rose-400 mt-0.5"></i>
-                        <div>
-                          <span className="font-bold block">Rejection Cause:</span>
-                          {risk.rejection_reason}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-400 italic">Awaiting risk evaluation...</div>
-                )}
-              </div>
-
-              {/* Trade Simulator Panel */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-4 shadow-md">
-                <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-[#10b981] fa-laptop-code text-emerald-400 text-lg"></i>
-                    <h2 className="font-bold text-slate-200">Paper Trade Simulator</h2>
-                  </div>
-                  <span className="text-[10px] text-slate-400">0.1% Slippage + $1 Fee</span>
-                </div>
-
-                {trade ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div className="bg-slate-900/80 p-2.5 rounded border border-slate-700/50">
-                        <span className="text-slate-400 block">Entry Price (w/ Slippage)</span>
-                        <span className="font-bold text-slate-200 font-mono">${trade.entry_price.toFixed(2)}</span>
-                      </div>
-                      <div className="bg-slate-900/80 p-2.5 rounded border border-slate-700/50">
-                        <span className="text-slate-400 block">Quantity</span>
-                        <span className="font-bold text-slate-200 font-mono">{trade.quantity} shares</span>
-                      </div>
-                      <div className="bg-slate-900/80 p-2.5 rounded border border-slate-700/50">
-                        <span className="text-slate-400 block">Exit Price (3 Candles)</span>
-                        <span className="font-bold text-slate-200 font-mono">${trade.exit_price ? trade.exit_price.toFixed(2) : '--'}</span>
-                      </div>
-                      <div className="bg-slate-900/80 p-2.5 rounded border border-slate-700/50">
-                        <span className="text-slate-400 block">Simulated Net P&L</span>
-                        <span className={`font-bold font-mono text-sm ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {trade.pnl >= 0 ? `+$${trade.pnl.toFixed(2)}` : `-$${Math.abs(trade.pnl).toFixed(2)}`}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-slate-900 p-2.5 rounded border border-slate-700/60 text-xs">
-                      <span className="text-slate-400">Execution Status:</span>
-                      <span className={`font-bold px-2 py-0.5 rounded ${
-                        trade.status === 'APPROVED (PAPER)' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                      }`}>
-                        {trade.status}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-400 italic">No trade simulated.</div>
-                )}
-              </div>
-
-            </section>
-
-            {/* RIGHT COLUMN: Audit Timeline & Transparency (3 cols) */}
-            <section className="lg:col-span-3 flex flex-col gap-6">
-              
-              {/* Audit Timeline Panel */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-4 shadow-md h-[460px]">
-                <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <h2 className="font-bold text-slate-200 flex items-center gap-2">
-                    <i className="fa-solid fa-clock-rotate-left text-blue-400"></i> Audit Timeline
-                  </h2>
-                  <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-mono">
-                    {auditLogs.length} Events
-                  </span>
-                </div>
-
-                <div className="flex-1 overflow-y-auto space-y-3 custom-scroll pr-1">
-                  {auditLogs.length === 0 ? (
-                    <div className="text-xs text-slate-400 italic">No events logged yet.</div>
-                  ) : (
-                    auditLogs.map((evt) => (
-                      <div key={evt.id} className="bg-slate-900/80 border border-slate-700/60 rounded-lg p-3 text-xs flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-[10px] text-slate-400 border-b border-slate-800 pb-1">
-                          <span>Candle #{evt.candle_index}</span>
-                          <span className={`font-bold ${
-                            evt.outcome === 'TRADE_EXECUTED' ? 'text-emerald-400' :
-                            evt.outcome === 'TRADE_REJECTED' ? 'text-rose-400' : 'text-slate-400'
-                          }`}>
-                            {evt.outcome}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-slate-300">
-                          <span>Close Price:</span>
-                          <span className="font-mono font-semibold">${evt.price.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-300">
-                          <span>Signal:</span>
-                          <span className="font-semibold">{evt.signal?.signal}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-300">
-                          <span>Risk Gate:</span>
-                          <span className={`font-semibold ${evt.risk_decision?.approved ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {evt.risk_decision?.approved ? 'Approved' : 'Rejected'}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Build Transparency Panel */}
-              <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 flex flex-col gap-3 shadow-md">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <i className="fa-solid fa-code text-emerald-400"></i> Architecture Principles
-                </h3>
-                <ul className="text-xs text-slate-300 space-y-2">
-                  <li className="flex items-start gap-2">
-                    <i className="fa-solid fa-check-double text-emerald-400 mt-0.5"></i>
-                    <span>Structured JSON AI Signal Proposals</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <i className="fa-solid fa-shield-halved text-amber-400 mt-0.5"></i>
-                    <span>Deterministic Zero-LLM Risk Guardian</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <i className="fa-solid fa-ban-smoke text-blue-400 mt-0.5"></i>
-                    <span>Paper-Trading & Synthetic Data Only</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <i className="fa-solid fa-user-check text-purple-400 mt-0.5"></i>
-                    <span>Human-in-the-Loop Final Approval</span>
-                  </li>
-                </ul>
-              </div>
-
-            </section>
-
-          </main>
-        </div>
-      );
+    for (i = 0; i < N; i++) {
+      var ret = cfg.drift + cfg.vol * gauss(r) + 0.0012 * Math.sin(i / N * 4 * Math.PI);
+      if (i >= 90 && i < 95) ret *= 3.5;
+      var open = p;
+      p = p * Math.exp(ret);
+      if (i === 65) p *= 1.025;
+      var close = p;
+      var high = Math.max(open, close) * (1 + Math.abs(gauss(r)) * cfg.vol * 0.4);
+      var low = Math.min(open, close) * (1 - Math.abs(gauss(r)) * cfg.vol * 0.4);
+      var volume = Math.round(8000 + r() * 37000);
+      if (i === 65) volume = Math.round(volume * 2.8);
+      if (i === 90) volume = Math.round(volume * 1.8);
+      if (i === 115) volume = Math.round(volume * 3.2);
+      bars.push({ i: i, open: open, high: high, low: low, close: close, volume: volume,
+                  event: EVENTS[i] || null, minute: START + i * BAR });
     }
 
-    ReactDOM.render(<App />, document.getElementById('root'));
-  </script>
+    var cumPV = 0, cumV = 0, e12 = bars[0].close, e26 = bars[0].close, sig = 0;
+    var rets = [0];
+    for (i = 0; i < N; i++) {
+      var b = bars[i];
+      b.tp = (b.high + b.low + b.close) / 3;
+      cumPV += b.tp * b.volume; cumV += b.volume;
+      b.vwap = cumPV / cumV;
+
+      var w = bars.slice(Math.max(0, i - 19), i + 1);
+      b.volRatio = b.volume / avg(w.map(function (x) { return x.volume; }));
+      b.sma20 = avg(w.map(function (x) { return x.close; }));
+
+      if (i > 0) rets.push(b.close / bars[i - 1].close - 1);
+      var rw = rets.slice(Math.max(1, i - 19), i + 1);
+      if (rw.length < 2) { b.vol = 14; }
+      else {
+        var m = avg(rw), v = 0;
+        for (var k = 0; k < rw.length; k++) v += Math.pow(rw[k] - m, 2);
+        b.vol = Math.sqrt(v / (rw.length - 1)) * Math.sqrt(252) * 100;
+      }
+
+      var gains = [], losses = [];
+      for (var j = Math.max(1, i - 13); j <= i; j++) {
+        var d = bars[j].close - bars[j - 1].close;
+        gains.push(d > 0 ? d : 0); losses.push(d < 0 ? -d : 0);
+      }
+      if (i === 0) b.rsi = 50;
+      else { var rs = avg(gains) / (avg(losses) + 1e-8); b.rsi = 100 - 100 / (1 + rs); }
+
+      if (i > 0) { e12 = e12 + (b.close - e12) * 2 / 13; e26 = e26 + (b.close - e26) * 2 / 27; }
+      b.macd = e12 - e26;
+      sig = i === 0 ? b.macd : sig + (b.macd - sig) * 2 / 10;
+      b.macdHist = b.macd - sig;
+      b.spreadBps = 0.5 + b.vol * 0.12;
+    }
+    return bars;
+  }
+
+  var DATA = {};
+  Object.keys(ASSETS).forEach(function (s) { DATA[s] = generate(s); });
+
+  /* ---------- prepared news dataset (synthetic) ---------- */
+  function newsFor(sym, t) {
+    var name = ASSETS[sym].name;
+    var items = {
+      65:  { headline: name + " sees heavy buying after upbeat demand commentary", event: "Demand and guidance", score: 0.62, conf: 0.81 },
+      90:  { headline: "Sharp swings in " + name + " as traders react to macro headlines", event: "Macro shock", score: -0.35, conf: 0.64 },
+      115: { headline: "Unusually heavy turnover in " + name + ", cause not confirmed", event: "Unusual activity", score: 0.05, conf: 0.42 }
+    };
+    var keys = [115, 90, 65];
+    for (var k = 0; k < keys.length; k++) {
+      var e = keys[k];
+      if (t >= e && t <= e + 8) {
+        var it = items[e];
+        return { headline: it.headline, event: it.event, score: it.score, conf: it.conf, tick: e,
+                 label: it.score > 0.2 ? "positive" : it.score < -0.2 ? "negative" : "neutral",
+                 entities: name + " (" + sym + ")" };
+      }
+    }
+    return null;
+  }
+
+  /* ---------- state ---------- */
+  var S = {
+    asset: "AAPL", tick: 65, mult: 1, timer: null, busy: false,
+    cash: START_CASH, realized: 0, positions: {}, trades: [], audit: [],
+    decisions: {}, lastExec: null, lastSig: null
+  };
+
+  function log(stage, event, result, details) {
+    S.audit.unshift({ time: clock(), stage: stage, event: event, result: result, details: details });
+  }
+
+  function equity() {
+    var e = S.cash;
+    for (var sym in S.positions) e += S.positions[sym].qty * DATA[sym][S.tick].close;
+    return e;
+  }
+  function unrealized() {
+    var u = 0;
+    for (var sym in S.positions) u += S.positions[sym].qty * DATA[sym][S.tick].close - S.positions[sym].cost;
+    return u;
+  }
+  function defaultQty(sym) {
+    var p = DATA[sym][S.tick].close;
+    return p > 1000 ? 0.1 : Math.max(1, Math.floor(10000 / p));
+  }
+
+  /* ---------- analysis: market data -> signal -> news -> risk -> supervisor ---------- */
+  function analyze() {
+    var bars = DATA[S.asset], b = bars[S.tick], prev = bars[Math.max(0, S.tick - 1)];
+    var qty = Math.max(0, parseFloat($("qty").value) || 0);
+    var eq = equity(), notional = qty * b.close, fee = notional * FEE;
+    var pos = S.positions[S.asset], existing = pos ? pos.qty * b.close : 0;
+    var effVol = b.vol * S.mult;
+    var win = bars.slice(Math.max(0, S.tick - 19), S.tick + 1);
+    var avgTurnover = avg(win.map(function (x) { return x.volume; })) * b.close;
+    var dayPct = (eq - START_CASH) / START_CASH;
+
+    var checks = [
+      { rule: "Cash covers order and fee", actual: usd(S.cash), limit: usd(notional + fee), ok: S.cash >= notional + fee },
+      { rule: "Position size and concentration", actual: pct((existing + notional) / eq), limit: "25% of equity", ok: (existing + notional) / eq <= 0.25 },
+      { rule: "Order size against liquidity", actual: pct(notional / avgTurnover, 2), limit: "5% of turnover", ok: notional / avgTurnover <= 0.05 },
+      { rule: "Volatility", actual: num(effVol, 1) + "%", limit: "22%", ok: effVol <= 22 },
+      { rule: "Stop-loss distance", actual: pct(STOP), limit: "3.0% at most", ok: STOP <= 0.03 },
+      { rule: "Maximum daily loss", actual: spct(dayPct), limit: "-5.0%", ok: dayPct >= -0.05 }
+    ];
+    var failed = checks.filter(function (c) { return !c.ok; });
+    var gate = failed.length === 0 && qty > 0;
+
+    var rsi = b.rsi, mh = b.macdHist, vr = b.volRatio;
+    var reversal = rsi < 35 && mh > 0 && vr >= 1.2;
+    var breakout = b.close > b.vwap && vr > 1.5;
+    var type, conf, thesis, evidence = [], flags = [], setup = false;
+
+    if (reversal) {
+      setup = true; type = "Reversal"; conf = 88;
+      thesis = "Oversold bounce with rising momentum and heavy volume.";
+      evidence = ["RSI is " + num(rsi, 1) + ", below 35", "MACD histogram is positive (" + num(mh, 2) + ")", "Volume is " + num(vr, 2) + "x its 20-bar average"];
+    } else if (breakout) {
+      setup = true; type = "Breakout"; conf = 82;
+      thesis = "Price is above VWAP on unusually heavy volume, a possible breakout.";
+      evidence = ["Price " + price(b.close) + " is above VWAP " + price(b.vwap), "Volume is " + num(vr, 2) + "x its 20-bar average"];
+    } else if (rsi > 65 && mh < 0) {
+      type = "Reversal (down)"; conf = 74;
+      thesis = "Overbought and momentum is fading. Watching only, because this console does not short.";
+      evidence = ["RSI is " + num(rsi, 1) + ", above 65", "MACD histogram is negative (" + num(mh, 2) + ")"];
+    } else if (vr >= 2.5 || b.event === "Volatility spike") {
+      type = "Abnormal activity"; conf = 66;
+      thesis = "Volume or volatility is out of pattern. Watching until the cause is clear.";
+      evidence = ["Volume is " + num(vr, 2) + "x its 20-bar average", "Volatility score is " + num(effVol, 1) + "%"];
+    } else {
+      type = "Consolidation"; conf = 58;
+      thesis = "No clear edge. Price is moving sideways.";
+      evidence = ["RSI is neutral at " + num(rsi, 1), "Price is " + usd(b.close - b.vwap) + " from VWAP"];
+    }
+
+    var state;
+    if (setup) {
+      state = gate ? "PAPER BUY" : "BLOCKED";
+      if (gate) flags.push("Stop-loss would sit " + pct(STOP) + " below entry");
+      failed.forEach(function (c) { flags.push(c.rule + ": " + c.actual + " against a limit of " + c.limit); });
+      if (!failed.length && qty <= 0) flags.push("Enter a quantity above zero to check the order");
+    } else {
+      state = "WATCH";
+      flags.push("No buy setup at this bar");
+    }
+    if (effVol > 16) flags.push("Volatility is elevated at " + num(effVol, 1) + "%");
+
+    var news = newsFor(S.asset, S.tick);
+    var needsApproval = state === "PAPER BUY" && (conf < 80 || effVol > 16 || (news && news.conf < 0.5));
+    var reasonsApproval = [];
+    if (conf < 80) reasonsApproval.push("model confidence is " + conf + "%");
+    if (effVol > 16) reasonsApproval.push("volatility is " + num(effVol, 1) + "%");
+    if (news && news.conf < 0.5) reasonsApproval.push("linked news has low confidence");
+
+    var key = S.asset + ":" + S.tick;
+    var dec = S.decisions[key];
+    var sup;
+    if (state === "BLOCKED") sup = { s: "fail", label: "Stopped", text: "Risk gate rejected the order" };
+    else if (state === "WATCH") sup = { s: "idle", label: "No order", text: "Nothing to route" };
+    else if (dec === "declined") sup = { s: "fail", label: "Declined", text: "You declined this trade" };
+    else if (needsApproval && dec !== "approved") sup = { s: "warn", label: "Needs approval", text: "A human must approve" };
+    else sup = { s: "pass", label: needsApproval ? "Approved" : "Cleared", text: needsApproval ? "You approved this trade" : "Within all limits" };
+
+    var blockReason = "";
+    if (qty <= 0) blockReason = "Enter a quantity above zero.";
+    else if (state === "BLOCKED") blockReason = "Blocked by risk: " + failed.map(function (c) { return c.rule.toLowerCase(); }).join(", ") + ".";
+    else if (state === "WATCH") blockReason = "No buy signal at this bar, so no order is proposed.";
+    else if (sup.s === "fail") blockReason = "You declined this trade.";
+    else if (sup.s === "warn") blockReason = "Waiting for your approval in the decision panel.";
+
+    var a = {
+      bar: b, prev: prev, qty: qty, eq: eq, notional: notional, fee: fee, checks: checks, failed: failed, gate: gate,
+      type: type, conf: conf, thesis: thesis, evidence: evidence, flags: flags, setup: setup, state: state,
+      news: news, needsApproval: needsApproval, reasonsApproval: reasonsApproval, sup: sup, key: key,
+      blockReason: blockReason, canExecute: !blockReason && !S.busy, effVol: effVol, avgTurnover: avgTurnover
+    };
+    a.explain = explain(a);
+    return a;
+  }
+
+  function explain(a) {
+    var b = a.bar, out = [];
+    out.push("At " + timeLabel(b.minute) + " on " + S.asset + ", the signal agent found: " + a.type.toLowerCase() +
+             ", rule score " + a.conf + " out of 100 (not a probability).");
+    out.push("Evidence: " + a.evidence.join("; ") + ".");
+    if (a.news) out.push("Linked news (" + a.news.event.toLowerCase() + ", " + a.news.label + " sentiment, " +
+                         Math.round(a.news.conf * 100) + "% extraction confidence) is context only and does not trigger trades.");
+    if (a.state === "BLOCKED") out.push("Risk rejected the order: " + a.failed.map(function (c) { return c.rule.toLowerCase(); }).join(", ") + ".");
+    else if (a.state === "PAPER BUY") out.push("All " + a.checks.length + " risk checks passed for " + num(a.qty) + " units.");
+    else out.push("No order was proposed, so no risk rejection applies.");
+    if (a.state === "PAPER BUY") {
+      out.push(a.needsApproval ? "Escalated to a human because " + a.reasonsApproval.join(" and ") + "." : "The supervisor cleared it automatically.");
+    }
+    out.push("Assumptions: synthetic prices, 1 to 4 bps slippage, 5 bps fees, simulated latency and fills. This is decision support, not financial advice.");
+    return out.join(" ");
+  }
+
+  /* ---------- rendering ---------- */
+  function badge(cls, text) { return '<span class="badge ' + cls + '">' + text + "</span>"; }
+
+  function renderPipeline(a) {
+    var b = a.bar, chg = b.close / a.prev.close - 1;
+    var ex = S.lastExec && S.lastExec.key === a.key ? S.lastExec : null;
+    var sim;
+    if (ex) sim = { s: ex.status === "rejected" ? "fail" : ex.status === "partial" ? "warn" : "pass",
+                    label: ex.status === "rejected" ? "Rejected" : ex.status === "partial" ? "Partial fill" : "Filled",
+                    text: ex.text };
+    else if (a.state === "BLOCKED") sim = { s: "idle", label: "Not sent", text: "Order never left the risk gate" };
+    else sim = { s: "idle", label: "Waiting", text: "No simulated order yet" };
+
+    var newsStage = a.news
+      ? { s: a.news.conf < 0.5 ? "warn" : "pass", label: a.news.conf < 0.5 ? "Low confidence" : "Linked", text: a.news.event + ", " + a.news.label }
+      : { s: "idle", label: "No news", text: "Nothing linked to this bar" };
+
+    var stages = [
+      { n: "Market data", s: "pass", label: "Updated", text: "Close " + price(b.close) + " (" + spct(chg) + "), volume " + num(b.volRatio, 2) + "x average" },
+      { n: "Signal", s: a.setup ? "pass" : "idle", label: a.setup ? "Setup found" : "Watching", text: a.type },
+      { n: "News and sentiment", s: newsStage.s, label: newsStage.label, text: newsStage.text },
+      { n: "Risk", s: a.gate ? "pass" : "fail", label: a.gate ? "Passed" : "Rejected",
+        text: (a.checks.length - a.failed.length) + " of " + a.checks.length + " checks passed" },
+      { n: "Supervisor", s: a.sup.s, label: a.sup.label, text: a.sup.text },
+      { n: "Trade simulation", s: sim.s, label: sim.label, text: sim.text },
+      { n: "Explanation", s: "pass", label: "Written", text: "Audit note in the decision panel" }
+    ];
+    $("pipeline").innerHTML = stages.map(function (st) {
+      return '<div class="stage" data-s="' + st.s + '"><h3>' + st.n + '</h3><p class="st">' + st.label + "</p><p>" + st.text + "</p></div>";
+    }).join("");
+  }
+
+  function renderMetrics(a) {
+    var b = a.bar, chg = b.close - a.prev.close, chgPct = chg / a.prev.close;
+    $("chartTitle").textContent = S.asset + " at " + timeLabel(b.minute);
+    $("metrics").innerHTML =
+      '<div class="metric"><span>Last price</span><strong>' + price(b.close) + "</strong></div>" +
+      '<div class="metric"><span>Move vs previous bar</span><strong class="' + (chg >= 0 ? "up" : "down") + '">' + (chg >= 0 ? "+" : "") + price(chg) + " (" + spct(chgPct) + ")</strong></div>" +
+      '<div class="metric"><span>Volume vs average</span><strong>' + num(b.volRatio, 2) + "x</strong></div>" +
+      '<div class="metric"><span>Volatility</span><strong>' + num(a.effVol, 1) + "%</strong></div>" +
+      '<div class="metric"><span>Estimated spread</span><strong>' + num(b.spreadBps, 1) + " bps</strong></div>" +
+      '<div class="metric"><span>Average turnover</span><strong>$' + num(a.avgTurnover / 1e6, 1) + "M</strong></div>";
+  }
+
+  function drawChart() {
+    var bars = DATA[S.asset], t = S.tick, from = Math.max(0, t - VIEW + 1), win = bars.slice(from, t + 1);
+    var W = 900, H = 396, pl = 10, pr = 68, pt = 22, priceH = 254, volTop = 296, volH = 70;
+    var slot = (W - pl - pr) / VIEW, off = VIEW - win.length;
+    var lo = Infinity, hi = -Infinity, k;
+    win.forEach(function (b) { lo = Math.min(lo, b.low, b.vwap, b.sma20); hi = Math.max(hi, b.high, b.vwap, b.sma20); });
+    var pad = (hi - lo) * 0.1 || 1; lo -= pad * 0.5; hi += pad;
+    var X = function (i) { return pl + (i - from + off + 0.5) * slot; };
+    var Y = function (v) { return pt + (hi - v) / (hi - lo) * priceH; };
+    var vmax = Math.max.apply(null, win.map(function (b) { return b.volume; }));
+    var g = "";
+
+    for (k = 0; k <= 4; k++) {
+      var gv = lo + (hi - lo) * k / 4, gy = Y(gv);
+      g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '" stroke="' + C.grid + '"/>' +
+           '<text x="' + (W - pr + 6) + '" y="' + (gy + 4).toFixed(1) + '" font-size="11" fill="' + C.muted + '">' + price(gv) + "</text>";
+    }
+
+    var cw = Math.max(2, slot * 0.62);
+    win.forEach(function (b) {
+      var x = X(b.i), up = b.close >= b.open, col = up ? C.up : C.down;
+      var yo = Y(b.open), yc = Y(b.close), top = Math.min(yo, yc), h = Math.max(1.5, Math.abs(yo - yc));
+      var tip = timeLabel(b.minute) + "  open " + price(b.open) + "  high " + price(b.high) + "  low " + price(b.low) + "  close " + price(b.close) + "  volume " + num(b.volume, 0);
+      g += "<g><title>" + tip + "</title>" +
+           '<line x1="' + x.toFixed(1) + '" x2="' + x.toFixed(1) + '" y1="' + Y(b.high).toFixed(1) + '" y2="' + Y(b.low).toFixed(1) + '" stroke="' + col + '"/>' +
+           '<rect x="' + (x - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + col + '"/>' +
+           '<rect x="' + (x - cw / 2).toFixed(1) + '" y="' + (volTop + volH - b.volume / vmax * volH).toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + (b.volume / vmax * volH).toFixed(1) + '" fill="#B9C2CC"/></g>';
+    });
+
+    var line = function (key, col, dash) {
+      return '<polyline fill="none" stroke="' + col + '" stroke-width="1.6"' + (dash ? ' stroke-dasharray="5 4"' : "") + ' points="' +
+        win.map(function (b) { return X(b.i).toFixed(1) + "," + Y(b[key]).toFixed(1); }).join(" ") + '"/>';
+    };
+    g += line("vwap", C.vwap, true) + line("sma20", C.sma, false);
+
+    win.forEach(function (b) {
+      if (!b.event) return;
+      var x = X(b.i), y = Y(b.high) - 12;
+      var anchor = x < pl + 60 ? "start" : x > W - pr - 60 ? "end" : "middle";
+      g += '<path d="M' + x.toFixed(1) + " " + (y - 6).toFixed(1) + " l5 6 -5 6 -5 -6z" + '" fill="' + C.event + '"/>' +
+           '<text x="' + x.toFixed(1) + '" y="' + (y - 10).toFixed(1) + '" font-size="11" font-weight="600" text-anchor="' + anchor + '" fill="' + C.event + '">' + b.event + "</text>";
+    });
+
+    S.trades.forEach(function (tr) {
+      if (tr.asset !== S.asset || tr.tick < from || tr.tick > t) return;
+      var x = X(tr.tick), y = Y(tr.price);
+      if (tr.side === "BUY") g += '<polygon points="' + (x - 6).toFixed(1) + "," + (y + 16).toFixed(1) + " " + (x + 6).toFixed(1) + "," + (y + 16).toFixed(1) + " " + x.toFixed(1) + "," + (y + 5).toFixed(1) + '" fill="' + C.up + '" stroke="#fff"/>';
+      else g += '<polygon points="' + (x - 6).toFixed(1) + "," + (y - 16).toFixed(1) + " " + (x + 6).toFixed(1) + "," + (y - 16).toFixed(1) + " " + x.toFixed(1) + "," + (y - 5).toFixed(1) + '" fill="' + C.down + '" stroke="#fff"/>';
+    });
+
+    for (var j = win.length - 1; j >= 0; j -= 16) {
+      g += '<text x="' + X(win[j].i).toFixed(1) + '" y="' + (H - 6) + '" font-size="11" text-anchor="middle" fill="' + C.muted + '">' + timeLabel(win[j].minute) + "</text>";
+    }
+    g += '<text x="' + pl + '" y="' + (volTop - 4) + '" font-size="11" fill="' + C.muted + '">Volume</text>';
+
+    var last = bars[t];
+    $("chart").innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + S.asset + " candlestick chart up to " + timeLabel(last.minute) + ", last price " + price(last.close) + '">' + g + "</svg>";
+  }
+
+  function renderDecision(a) {
+    var s = a.state === "PAPER BUY" ? "pass" : a.state === "BLOCKED" ? "fail" : "idle";
+    var title = a.state === "PAPER BUY" ? "Paper buy" : a.state === "BLOCKED" ? "Blocked by risk" : "Watch";
+    var h = '<h2>Decision</h2><div class="verdict" data-s="' + s + '"><strong>' + title + "</strong><span>" + a.type + ", rule score " + a.conf + " of 100</span></div>";
+    h += '<p class="thesis">' + a.thesis + "</p>";
+    h += "<h3>Evidence</h3><ul class=\"plain\">" + a.evidence.map(function (e) { return "<li>" + e + "</li>"; }).join("") + "</ul>";
+    h += "<h3>Risks and flags</h3><ul class=\"plain\">" + a.flags.map(function (e) { return "<li>" + e + "</li>"; }).join("") + "</ul>";
+
+    h += "<h3>Linked news</h3>";
+    if (a.news) {
+      h += '<div class="news"><strong>' + a.news.headline + "</strong><small>" + a.news.event + ", " + a.news.label + " sentiment, " +
+           Math.round(a.news.conf * 100) + "% confidence. Affects " + a.news.entities + ". Prepared dataset, not live news.</small></div>";
+    } else h += '<p class="empty">No news is linked to this bar.</p>';
+
+    if (a.state === "PAPER BUY" && a.needsApproval) {
+      var dec = S.decisions[a.key];
+      if (dec) {
+        h += '<h3>Human approval</h3><div class="approval done">You ' + dec + " this trade at " + timeLabel(a.bar.minute) + ".</div>";
+      } else {
+        h += '<h3>Human approval</h3><div class="approval">The supervisor paused this trade because ' + a.reasonsApproval.join(" and ") + '.' +
+             '<div class="actions"><button class="btn primary small" data-act="approve" type="button">Approve trade</button>' +
+             '<button class="btn small" data-act="decline" type="button">Decline</button></div></div>';
+      }
+    }
+    h += "<h3>Explanation</h3><p class=\"explain\">" + a.explain + "</p>";
+    $("decision").innerHTML = h;
+  }
+
+  function renderRisk(a) {
+    $("riskBody").innerHTML = a.checks.map(function (c) {
+      return "<tr><td>" + c.rule + '</td><td class="num">' + c.actual + '</td><td class="num">' + c.limit + "</td><td>" + badge(c.ok ? "pass" : "fail", c.ok ? "Passed" : "Failed") + "</td></tr>";
+    }).join("");
+  }
+
+  function renderTicket(a) {
+    $("notional").textContent = usd(a.notional);
+    $("stop").textContent = usd(a.bar.close * (1 - STOP));
+    $("fees").textContent = usd(a.fee);
+    $("execMsg").textContent = a.blockReason || "Ready. This sends a simulated order only.";
+    $("execute").disabled = !a.canExecute;
+    var r = $("execResult"), ex = S.lastExec;
+    if (!ex) { r.hidden = true; return; }
+    r.hidden = false;
+    r.setAttribute("data-s", ex.status === "rejected" ? "fail" : ex.status === "partial" ? "warn" : "pass");
+    r.innerHTML = "<strong>" + ex.title + "</strong><br>" + ex.detail;
+  }
+
+  function renderPortfolio() {
+    var eq = equity(), day = eq - START_CASH, syms = Object.keys(S.positions);
+    var h = '<div class="kv"><span>Equity</span><strong>' + usd(eq) + "</strong></div>" +
+            '<div class="kv"><span>Cash</span><strong>' + usd(S.cash) + "</strong></div>" +
+            '<div class="kv"><span>Day P&amp;L</span><strong>' + (day >= 0 ? "+" : "") + usd(day) + "</strong></div>" +
+            '<div class="kv"><span>Realized</span><strong>' + usd(S.realized) + "</strong></div>" +
+            '<div class="kv"><span>Unrealized</span><strong>' + usd(unrealized()) + "</strong></div>";
+    if (!syms.length) h += '<p class="empty">No open positions. Simulate a buy to open one.</p>';
+    else {
+      h += '<div class="scroll"><table style="margin-top:8px"><thead><tr><th>Asset</th><th class="num">Qty</th><th class="num">Avg cost</th><th class="num">P&amp;L</th><th></th></tr></thead><tbody>';
+      syms.forEach(function (sym) {
+        var p = S.positions[sym], last = DATA[sym][S.tick].close, pnl = p.qty * last - p.cost;
+        h += "<tr><td>" + sym + '</td><td class="num">' + num(p.qty, p.qty < 1 ? 3 : 2) + '</td><td class="num">' + price(p.cost / p.qty) + '</td><td class="num">' + usd(pnl) +
+             '</td><td><button class="btn small" data-act="close" data-sym="' + sym + '" type="button">Close</button></td></tr>';
+      });
+      h += "</tbody></table></div>";
+    }
+    $("portfolio").innerHTML = h;
+  }
+
+  function renderAudit() {
+    var cls = { Passed: "pass", Filled: "pass", Approved: "pass", Escalated: "warn", "Partial fill": "warn", Blocked: "fail", Rejected: "fail", Declined: "fail", Info: "idle" };
+    $("auditBody").innerHTML = S.audit.slice(0, 60).map(function (e) {
+      return "<tr><td>" + e.time + "</td><td>" + e.stage + "</td><td>" + e.event + "</td><td>" + badge(cls[e.result] || "idle", e.result) + "</td><td>" + e.details + "</td></tr>";
+    }).join("");
+  }
+
+  function renderAll() {
+    var a = analyze();
+    $("slider").value = S.tick;
+    $("tickLabel").textContent = "Bar " + S.tick + " of " + (N - 1) + ", " + timeLabel(a.bar.minute);
+    renderPipeline(a); renderMetrics(a); drawChart(); renderDecision(a);
+    renderRisk(a); renderTicket(a); renderPortfolio(); renderAudit();
+  }
+
+  /* ---------- actions ---------- */
+  function setTick(n) {
+    S.tick = Math.min(N - 1, Math.max(20, n));
+    if (S.tick >= N - 1 && S.timer) stopPlay();
+    var a = analyze(), key = S.asset + "|" + a.state;
+    if (key !== S.lastSig || a.bar.event) {
+      S.lastSig = key;
+      log("Signal", a.type + ": " + (a.state === "PAPER BUY" ? "paper buy" : a.state === "BLOCKED" ? "blocked" : "watch"),
+          a.state === "PAPER BUY" ? "Passed" : a.state === "BLOCKED" ? "Blocked" : "Info",
+          S.asset + " at " + timeLabel(a.bar.minute) + ". " + a.thesis);
+      if (a.state === "PAPER BUY" && a.needsApproval) log("Supervisor", "Escalated to human", "Escalated", "Reason: " + a.reasonsApproval.join(" and ") + ".");
+    }
+    renderAll();
+  }
+
+  function stopPlay() {
+    clearInterval(S.timer); S.timer = null;
+    $("play").textContent = "Auto-play"; $("play").setAttribute("aria-pressed", "false");
+  }
+  function startPlay() {
+    if (S.tick >= N - 1) setTick(40);
+    S.timer = setInterval(function () { setTick(S.tick + 1); }, 700);
+    $("play").textContent = "Pause"; $("play").setAttribute("aria-pressed", "true");
+  }
+
+  function simulateOrder() {
+    var a = analyze();
+    if (!a.canExecute) return;
+    S.busy = true;
+    $("execute").disabled = true; $("execute").textContent = "Sending order...";
+    var latency = Math.round(40 + Math.random() * 140);
+    var qty = a.qty, b = a.bar, key = a.key;
+    log("Simulation", "Order sent", "Info", "Buy " + num(qty, 3) + " " + S.asset + " at bar " + S.tick + ", simulated latency " + latency + " ms.");
+
+    setTimeout(function () {
+      var roll = Math.random();
+      if (roll < 0.06) {
+        S.lastExec = { key: key, status: "rejected", title: "Order rejected by the simulated venue",
+          detail: "No shares were bought and no fee was charged. Try again.", text: "Venue rejected the order" };
+        log("Simulation", "Order rejected", "Rejected", "Simulated venue rejection. No position change.");
+      } else {
+        var partial = roll < 0.26, frac = partial ? 0.5 + Math.random() * 0.4 : 1;
+        var slipBps = 1 + Math.random() * 3, filled = qty * frac;
+        var px = b.close * (1 + slipBps / 10000), cost = filled * px, fee = cost * FEE;
+        S.cash -= cost + fee;
+        var p = S.positions[S.asset] || { qty: 0, cost: 0 };
+        p.qty += filled; p.cost += cost + fee;
+        S.positions[S.asset] = p;
+        S.trades.push({ asset: S.asset, tick: S.tick, side: "BUY", price: px });
+        var d = "Filled " + num(filled, 3) + " of " + num(qty, 3) + " at " + price(px) + ". Slippage " + num(slipBps, 1) + " bps, fee " + usd(fee) + ", latency " + latency + " ms.";
+        S.lastExec = { key: key, status: partial ? "partial" : "filled", title: partial ? "Partial fill" : "Order filled", detail: d,
+                       text: partial ? "Filled " + Math.round(frac * 100) + "% of the order" : "Filled at " + price(px) };
+        log("Simulation", partial ? "Partial fill" : "Order filled", partial ? "Partial fill" : "Filled", S.asset + ": " + d);
+      }
+      S.busy = false; $("execute").textContent = "Simulate order";
+      renderAll();
+    }, 450);
+  }
+
+  function closePosition(sym) {
+    var p = S.positions[sym]; if (!p) return;
+    var b = DATA[sym][S.tick], px = b.close * (1 - 0.0001);
+    var proceeds = p.qty * px, fee = proceeds * FEE, pnl = proceeds - fee - p.cost;
+    S.cash += proceeds - fee; S.realized += pnl;
+    S.trades.push({ asset: sym, tick: S.tick, side: "SELL", price: px });
+    delete S.positions[sym];
+    log("Portfolio", "Position closed", "Info", sym + " sold at " + price(px) + ". Realized P&L " + usd(pnl) + " after fees.");
+    renderAll();
+  }
+
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-act]");
+    if (!el) return;
+    var act = el.getAttribute("data-act"), a;
+    if (act === "approve" || act === "decline") {
+      a = analyze();
+      S.decisions[a.key] = act === "approve" ? "approved" : "declined";
+      log("Supervisor", act === "approve" ? "Human approved trade" : "Human declined trade", act === "approve" ? "Approved" : "Declined",
+          S.asset + " at " + timeLabel(a.bar.minute) + ".");
+      renderAll();
+    } else if (act === "close") closePosition(el.getAttribute("data-sym"));
+  });
+
+  /* ---------- setup ---------- */
+  Object.keys(ASSETS).forEach(function (s) {
+    var o = document.createElement("option"); o.value = s; o.textContent = s + " (" + ASSETS[s].name + ")"; $("asset").appendChild(o);
+  });
+  $("asset").addEventListener("change", function () {
+    S.asset = this.value; S.lastSig = null; S.lastExec = null;
+    $("qty").value = defaultQty(S.asset);
+    log("Market data", "Instrument changed", "Info", "Switched replay to " + S.asset + ".");
+    setTick(S.tick);
+  });
+  $("mult").addEventListener("change", function () { S.mult = parseFloat(this.value); S.lastSig = null; setTick(S.tick); });
+  $("prev").addEventListener("click", function () { setTick(S.tick - 1); });
+  $("next").addEventListener("click", function () { setTick(S.tick + 1); });
+  $("resetReplay").addEventListener("click", function () { stopPlay(); S.lastSig = null; log("Replay", "Replay restarted", "Info", "Timeline moved back to bar 40."); setTick(40); });
+  $("play").addEventListener("click", function () { S.timer ? stopPlay() : startPlay(); });
+  $("slider").addEventListener("input", function () { setTick(parseInt(this.value, 10)); });
+  $("qty").addEventListener("input", renderAll);
+  $("execute").addEventListener("click", simulateOrder);
+  $("resetPortfolio").addEventListener("click", function () {
+    S.cash = START_CASH; S.realized = 0; S.positions = {}; S.trades = []; S.lastExec = null;
+    log("Portfolio", "Cash reset", "Info", "Cash restored to " + usd(START_CASH) + " and positions cleared.");
+    renderAll();
+  });
+  $("exportAudit").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(S.audit.slice().reverse(), null, 2)], { type: "application/json" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob); link.download = "vibetrade-audit-log.json";
+    document.body.appendChild(link); link.click(); link.remove();
+  });
+
+  $("backendUrl").value = BACKEND_URL;
+  $("checkBackend").addEventListener("click", function () {
+    var msg = $("backendMsg"), url = $("backendUrl").value.trim().replace(/\/+$/, "");
+    if (!url) { msg.textContent = "Enter your backend address first."; return; }
+    msg.textContent = "Checking...";
+    fetch(url + "/", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        msg.textContent = "Backend " + (j.status || "responded") + ": " + (j.app || "API") + " " + (j.version || "") + ", mode " + (j.mode || "unknown") + ".";
+      })
+      .catch(function () {
+        msg.textContent = "Could not reach the backend. It may be asleep (free hosts pause when idle), or the browser blocked the request (CORS).";
+      });
+  });
+
+  log("Session", "Session started", "Info", "Simulation only. Synthetic prices and prepared news. No live orders.");
+  $("qty").value = defaultQty(S.asset);
+  setTick(S.tick);
+})();
+</script>
 </body>
 </html>
