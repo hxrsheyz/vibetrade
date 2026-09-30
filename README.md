@@ -1,61 +1,107 @@
-# VibeTrade 📈 (SIMULATION ONLY)
+# VibeTrade Backend Engine ⚡
 
-> **⚠️ HACKATHON PAPER-TRADING DEMO**
-> **SIMULATION ONLY**: VibeTrade uses purely synthetic, in-memory market data generated locally in Python. It does **NOT** connect to any live broker, exchange, bank account, market data API, or news source. No API keys are required or requested.
-
----
-
-## 🌟 Overview
-
-**VibeTrade** is a feature-packed, single-page algorithmic & paper-trading simulation dashboard built for hackathons and strategy prototyping. It provides an intuitive interface to inspect market indicators, review AI-generated trade signals (with deterministic offline fallbacks), test risk management rules, execute paper orders, and maintain an immutable audit trail.
+> **Hackathon Track**: *"Building Intelligent Agentic Workflows to Revolutionize Core Intraday Trading Systems"*
+>
+> ⚠️ **SAFETY DISCLAIMER**: This application is a **paper-trading demo** built strictly for hackathon demonstration. It uses synthetic market data and **NEVER** connects to any live broker, financial exchange, bank account, or real trading API. All orders are simulated locally.
 
 ---
 
-## 🚀 Key Features
+## 📌 Executive Summary & Main Architecture
 
-1. **Title & Prominent Simulation Disclaimer**: Immediate visual confirmation of sandbox environment with no real financial risks.
-2. **Market-Data Replay Controls**: Step through synthetic time-series data, toggle auto-replay, adjust market volatility, and switch between synthetic assets (`BTC/USD`, `ETH/USD`, `NVDA`, `AAPL`, `TSLA`).
-3. **Current Market Metrics & Charts**: Real-time KPI summary (Price, 24h %, RSI-14, Volume, Volatility) plus dynamic Plotly technical charts (Candlesticks, Moving Averages, Buy/Sell trade execution flags).
-4. **AI Signal Panel**: Synthetic indicator-driven AI strategy engine featuring confidence scores, target entry/exit prices, and deterministic offline signal rationale explanations.
-5. **Deterministic Risk-Check Panel**: Pre-trade evaluation rules validating position sizes, account capital adequacy, volatility spikes, and daily trade limits with clear `PASSED` / `FLAGGED` / `BLOCKED` status tags.
-6. **Simulated Trade Panel**: Order entry form for Market & Limit orders, instant fill simulator, and live portfolio accounting (Cash Balance, Open Positions, Unrealized P&L, Realized P&L).
-7. **Audit Timeline**: Structured event log tracking tick updates, signal evaluations, risk checks, and trade fills with downloadable JSON log exports.
+VibeTrade introduces an intelligent human-in-the-loop copilot architecture for intraday trading:
+1. **AI Signal Agent**: Analyzes live high-frequency candles (price vs. VWAP, volume ratios, rolling volatility) and generates structured signal proposals (`WATCH_LONG`, `EXIT_WATCH`, `NO_TRADE`) with confidence scores, reasons, and risk explanations.
+2. **Deterministic Risk Guardian**: A hard, zero-LLM-override risk gate that programmatically evaluates 6 fundamental risk checks (confidence, volatility ceiling, notional value, daily max drawdown, position limits, stop-loss configuration).
+3. **Paper Trade Simulator**: Computes realistic trade execution parameters including 0.1% slippage, transaction fees, and multi-candle future exit P&L calculation.
+4. **Replay Engine & Audit Log**: State-managed 30-candle historical replay engine with chronological audit event tracking for transparency and regulatory compliance.
 
----
-
-## 💻 Quick Start
-
-### Prerequisites
-- Python 3.9 or higher
-
-### Installation & Launch
-
-1. Install required packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Start the Streamlit application on port 5000:
-   ```bash
-   python -m streamlit run app.py --server.address 0.0.0.0 --server.port 5000 --server.headless true --server.enableCORS=false
-   ```
-
-3. Open your browser at `http://localhost:5000` to view the VibeTrade dashboard.
-
-## ☁️ Streamlit Community Cloud Deployment
-
-VibeTrade is 100% compatible with **Streamlit Community Cloud**:
-
-1. Push this repository to GitHub.
-2. Log into [share.streamlit.io](https://share.streamlit.io/).
-3. Click **New app** and select your repository.
-4. Set **Main file path** to `app.py`.
-5. Click **Deploy!**
-
-> **Note**: No secrets or API keys are required. All dependencies in `requirements.txt` (`streamlit`, `pandas`, `numpy`, `plotly`) will automatically install during deployment.
+```mermaid
+flowchart LR
+    A["Synthetic Candle Replay Engine"] --> B["AI Signal Agent"]
+    B --> C{"Deterministic Risk Guardian"}
+    C -->|Approved| D["Paper Trade Simulator"]
+    C -->|Blocked| E["Risk Blocked Event"]
+    D --> F["Audit Timeline Log"]
+    E --> F
+```
 
 ---
 
-## 🔒 Security & Privacy Notice
-VibeTrade operates entirely in-memory. No trade telemetry, secrets, or market simulation data leaves the local Python runtime. No live brokers or financial APIs are connected.
+## 🛠️ Tech Stack & Dependencies
 
+- **Language**: TypeScript (ES2022 / NodeNext)
+- **Framework**: Express.js
+- **Runtime**: Node.js v18+
+- **Dev Tooling**: `ts-node-dev`, `cors`, `dotenv`
+
+---
+
+## 🚀 One-Command Quick Start
+
+### 1. Clone & Install Dependencies
+```bash
+cd vibetrade-backend
+npm install
+```
+
+### 2. Configure Environment (Optional LLM Key)
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+*(Optional: Set `OPENAI_API_KEY=your_key` if you wish to test live LLM natural language reasons. If omitted or invalid, the Signal Agent seamlessly uses robust deterministic fallback reasons).*
+
+### 3. Run Backend Server
+```bash
+npm run dev
+```
+*Server will start at `http://localhost:5000` with CORS enabled for your frontend dev server.*
+
+### 4. Run Automated Component Tests
+```bash
+npm test
+```
+
+---
+
+## 🎯 Rehearsing the 4-Minute Judging Demo
+
+This backend includes built-in scenario shortcuts to make your hackathon presentation seamless:
+
+| Candle Index | Scenario Name | Market Conditions | Expected Outcome |
+|---|---|---|---|
+| **Candle 11** | **Breakout Approved** | Close=$98.60 (above VWAP $96.50), Volume Ratio=2.45x (>1.8x), Volatility=0.024 (<0.05) | **APPROVED (PAPER)** – Signal `WATCH_LONG`, Risk Gate Passes, Trade Executed |
+| **Candle 21** | **High Volatility Risk** | Price momentum spike, but Volatility=0.078 (>0.05 limit) | **BLOCKED BY RISK** – Volatility check fails, Risk Guardian blocks order |
+
+### API Jump Command for Demo:
+To jump directly to Candle 11 during judging:
+```bash
+curl -X POST http://localhost:5000/api/replay/jump -H "Content-Type: application/json" -d '{"index": 11}'
+```
+
+---
+
+## 🛡️ Risk Guardian Rules (Strictly Deterministic)
+
+> **CRITICAL DIRECTIVE**: The Risk Guardian logic in `src/services/riskGuardian.ts` is strictly deterministic. The LLM is **NEVER** allowed to override, bypass, or alter these rules.
+
+1. **Confidence Rule**: Rejects if signal confidence < `0.70`.
+2. **Volatility Rule**: Rejects if market rolling volatility > `0.05` (5.00%).
+3. **Notional Value Rule**: Rejects if proposed order notional > `$100,000`.
+4. **Daily Max Drawdown Rule**: Rejects if cumulative daily P&L <= `-$5,000`.
+5. **Position Size Rule**: Rejects if calculated shares <= `0`.
+6. **Stop-Loss Rule**: Rejects if stop-loss configuration is omitted.
+
+---
+
+## 📄 API Reference & Frontend Integration
+
+Refer to [`API_DOCUMENTATION.md`](./API_DOCUMENTATION.md) for full endpoint specifications, JSON request/response payloads, and frontend TypeScript interface definitions.
+
+---
+
+## ⚖️ Safety & Compliance Disclaimer
+
+This software is created solely for educational and hackathon demonstration purposes.
+- **NO LIVE TRADING**: Contains no broker credentials, financial API keys, or live ordering capability.
+- **SYNTHETIC DATA**: All market prices, indicators, and volume metrics are synthetically generated.
+- **NOT INVESTMENT ADVICE**: None of the signals or outputs constitute financial advice or real-market recommendations.
